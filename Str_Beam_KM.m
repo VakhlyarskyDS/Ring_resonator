@@ -2,7 +2,7 @@
 %% element
 % K_e - Stiffness matrix of the elemenet
 % M_e - Mass matrix of the element
-% E_t - структура содержащая информацию о элементах
+% E_t - Structure containing element parameters
 % Structure of element data E_t
 % E_t.x1 - x coordinate of the 1-nd node of the element
 % E_t.y1 - y coordinate of the 1-st node of the element
