@@ -1,0 +1,90 @@
+! Creating solid-based model with low frequency split
+! in this lesson it is clear, that frequency split depends 
+! on geometry creation, not only on number of elements
+! in circumferential direction.
+! It is shown, that frequency split does't depends on type of solid
+! element (solid185 or solid186)
+
+FINISH  
+/CLEAR,NOSTART  
+
+/PREP7
+BTOL,1e-015,
+
+R = 15e-3
+R_anc = 2e-3
+h = 1e-3
+n = 8			! numder of segments in hemisphere 
+			! (4 - big frequency split)
+			! (6 - low freqency split)
+
+n_h = 2			! thickness number of elements
+n_s = 100		! meridional number of elements
+n_f = 480/n		! circumferential number of elements
+E = 7e10 		! Yungth modulus [Pa]
+mu = 0.17		! Poisson's ratio
+ro = 2330		! Density [kg/m^3]
+
+ET,1,SOLID185		! Element type selection
+			! change to solid186 to see that frequency split is large for n=4
+
+! Spherical segments creation
+*do,num,1,n
+SPHERE,R,R+h,0+360/n*(num-1),360/n*num,
+CYLIND,2e-3, ,-1.5*R,1.5*R,0+360/n*(num-1),360/n*num,
+*enddo
+
+*do,num,1,n
+VSBV,2*num-1,2*num
+*enddo
+
+VSBW,ALL
+VSEL,S,LOC,Z,0,R
+VDELE,ALL, , ,1
+ALLSEL,ALL
+VGLUE,All
+
+CSYS,1
+LSEL,S,LOC,X,1.01*R,R+0.9*h
+LESIZE,ALL, , ,n_h, , , , ,0
+LSEL,S,LOC,X,1.01*R_anc,0.99*R
+LESIZE,ALL, , ,n_s, , , , ,0
+ALLSEL,ALL
+LSEL,U,LOC,X,1.01*R,R+0.9*h
+LSEL,U,LOC,Z,-1.5*R,-h
+LESIZE,ALL, , ,n_f, , , , ,0
+Allsel,All,,,
+VSWEEP,ALL
+
+NSEL,S,LOC,X,0,R_anc
+D,ALL,,,,,,ALL, , , , ,   
+Allsel,All,,,
+csys,0
+
+MPTEMP,,,,,,,,  
+MPTEMP,1,0  
+MPDATA,EX,1,,E  
+MPDATA,PRXY,1,,mu   
+MPDATA,DENS,1,,ro
+
+/SOL
+
+ANTYPE,2
+MODOPT,LANB,2  
+EQSLV,SPAR  
+MXPAND,2, , ,1 
+LUMPM,0 
+PSTRES,0
+MODOPT,LANB,2,4000,6000, ,OFF
+SOLVE
+
+/POST1
+*GET,freq1,MODE,1,FREQ,
+*GET,freq2,MODE,2,FREQ,
+dfreq = freq2 - freq1
+
+*CFOPEN,'Vol_solid_185.txt',' ',' ',APPEND
+*VWRITE,n,n_h,n*n_f,n_s,FREQ1,FREQ2,DFREQ
+('Results',/,'n_volumes = ',f9.0,/'n_h = ',f6.0,/'n_f = ',f6.0,/'n_s = ',f6.0,/'f1 = ',f12.5,', Hz',/'f2 = ',f12.5,', Hz',/'df = ',E16.8,', Hz',//)
+*CFCLOS
+
