@@ -1,0 +1,99 @@
+! Creating shell-based model without defects 
+! but with frequensy split due to numerical errors 
+! accuring diring eigenvalues calculation
+
+FINISH  
+/CLEAR,NOSTART  
+
+/PREP7
+BTOL,1e-015,
+
+R = 15e-3
+R_anc = 2e-3
+h = 1e-3
+n = 12			! 4 - large freuency split
+			! 5 - low frequency split
+			! 6 - low frequency split
+n_s = 100
+n_f = 480/n
+
+E = 7e10 		! Yungth modulus [Pa]
+mu = 0.17		! Poisson's ratio
+ro = 2330		! Density [kg/m^3]
+
+ET,1,SHELL181		! Element type selection
+			! change to shell281 to see that frequency split doesn't depend on element type
+			! but depends on number of segments n
+
+! Spherical segments creation
+*do,num,1,n
+SPHERE,R,R+h,0+360/n*(num-1),360/n*num,
+CYLIND,2e-3, ,-1.5*R,1.5*R,0+360/n*(num-1),360/n*num,
+*enddo
+
+*do,num,1,n
+VSBV,2*num-1,2*num
+*enddo
+
+VSBW,ALL
+VSEL,S,LOC,Z,0,R
+VDELE,ALL, , ,1
+ALLSEL,ALL
+VGLUE,All
+
+VDELE,ALL
+CSYS,2
+ASEL,U,LOC,X,R,R
+ADELE,ALL,,,1
+ALLSEL,ALL
+
+CSYS,1
+LSEL,S,LOC,X,1.01*R_anc,0.99*R
+LESIZE,ALL, , ,n_s, , , , ,0
+ALLSEL,ALL
+LSEL,U,LOC,Z,-1.5*R,-h
+LESIZE,ALL, , ,n_f, , , , ,0
+Allsel,All,,,
+
+NUMCMP,AREA
+
+MSHKEY,1
+AMESH,ALL
+
+NSEL,S,LOC,X,0,R_anc
+D,ALL,,,,,,ALL, , , , ,   
+Allsel,All,,,
+csys,0
+
+MPTEMP,,,,,,,,
+MPTEMP,1,0
+MPDATA,EX,1,,E
+MPDATA,PRXY,1,,mu
+MPDATA,DENS,1,,ro
+
+sect,1,shell,,
+secdata,h,1,0.0,3
+secoffset,BOT
+seccontrol,,,,,,,
+
+/SOL
+
+ANTYPE,2
+MODOPT,LANB,2  
+EQSLV,SPAR  
+MXPAND,2, , ,1 
+LUMPM,0 
+PSTRES,0
+MODOPT,LANB,2,3500,6500, ,OFF
+SOLVE
+
+/POST1
+*GET,freq1,MODE,1,FREQ,
+*GET,freq2,MODE,2,FREQ,
+dfreq = freq2 - freq1
+
+
+*CFOPEN,'Vol_shell_181.txt',' ',' ',APPEND
+*VWRITE,n,n*n_f,n_s,FREQ1,FREQ2,DFREQ
+('Results',/,'n_areas = ',f9.0,/'n_h = shell elenent',/'n_f = ',f6.0,/'n_s = ',f6.0,/'f1 = ',f12.5,', Hz',/'f2 = ',f12.5,', Hz',/'df = ',E16.8,', Hz',//)
+*CFCLOS
